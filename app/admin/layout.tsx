@@ -23,7 +23,6 @@ export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-  signup: React.ReactNode;
 }>) {
   return (
     <html lang="en">
