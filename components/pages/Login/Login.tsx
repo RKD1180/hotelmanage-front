@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FormWrapper from "@/components/FormComponents/FormWrapper";
 import FormInput from "@/components/FormComponents/FormInput";
+import { login } from "@/services/auth";
+import { showErrorToast } from "@/lib/toast";
 
 const formSchema = z.object({
   username: z.string().min(2, {
@@ -22,13 +24,24 @@ const Login = () => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: "",
+      password: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const response: any = await login(values.username, values.password);
+
+      if (response.success) {
+        console.log("Login successful:", response.message);
+        window.location.href = "/admin"; // Redirect to admin dashboard after login
+      } else {
+        showErrorToast(response.error?.messsage || "Login failed");
+        console.log("Login failed:", response);
+      }
+    } catch (error) {
+      console.error("Unexpected error:", error);
+    }
   }
 
   return (
