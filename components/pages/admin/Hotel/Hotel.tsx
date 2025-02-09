@@ -1,6 +1,5 @@
 "use client";
-import { Suspense, useEffect, useState } from "react";
-import axios from "axios";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -13,7 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/common/Modal";
 import AddHotel from "./AddHotel";
-import { getAllHotels } from "@/services/hotelService"; // Import your service
+import { deleteHotel, getAllHotels } from "@/services/hotelService"; // Import delete function
+import PaginationComponent from "@/components/common/PaginationComponent";
 
 export type Hotel = {
   _id: string;
@@ -28,18 +28,27 @@ export type Hotel = {
   updatedAt: string;
 };
 
-export default function HotelPage() {
-  const [hotels, setHotels] = useState<Hotel[]>([]);
+type HotelsListProps = {
+  hotels: Hotel[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    limit: number;
+  };
+};
+
+export default function HotelPage({
+  hotels: initialHotels,
+  pagination: initialPagination,
+}: HotelsListProps) {
+  const [hotels, setHotels] = useState<Hotel[]>(initialHotels);
   const [loading, setLoading] = useState<boolean>(false);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    limit: 10,
-  });
+  const [pagination, setPagination] = useState(initialPagination);
   const [modalData, setModalData] = useState<{
     title: string;
     component: React.ReactNode;
   } | null>(null);
+  const [hotelToDelete, setHotelToDelete] = useState<Hotel | null>(null);
 
   // Function to fetch hotels data
   const fetchHotels = async (page: number = pagination.currentPage) => {
@@ -47,11 +56,11 @@ export default function HotelPage() {
     try {
       const data = await getAllHotels(page, pagination.limit);
       setHotels(data.hotels);
-      setPagination((prevPagination) => ({
-        ...prevPagination,
+      setPagination({
+        currentPage: page,
         totalPages: data.totalPages,
-        currentPage: page, // Ensure currentPage is updated correctly
-      }));
+        limit: pagination.limit,
+      });
     } catch (error) {
       console.error("Error fetching hotels:", error);
     } finally {
@@ -59,23 +68,74 @@ export default function HotelPage() {
     }
   };
 
-  // Fetch hotels when the component mounts
   useEffect(() => {
     fetchHotels();
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, []);
 
-  // Handle opening the "Add Hotel" modal
   const openAddHotelModal = () => {
     setModalData({
       title: "Add New Hotel",
-      component: <AddHotel fetchHotels={fetchHotels} />,
+      component: (
+        <AddHotel fetchHotels={fetchHotels} closeModals={closeModals} />
+      ),
     });
   };
 
-  // Handle pagination changes
-  const handlePageChange = (page: number) => {
-    if (page >= 1 && page <= pagination.totalPages) {
-      fetchHotels(page); // Fetch hotels for the selected page
+  const openEditHotelModal = (hotel: Hotel) => {
+    setModalData({
+      title: `Edit Hotel: ${hotel.name}`,
+      component: (
+        <AddHotel
+          hotel={hotel}
+          fetchHotels={fetchHotels}
+          closeModals={closeModals}
+        />
+      ),
+    });
+  };
+
+  const closeModals = useCallback(() => {
+    setModalData(null);
+    setHotelToDelete(null);
+  }, []);
+
+  // Open Delete Confirmation Modal
+  const openDeleteModal = (hotel: Hotel) => {
+    setHotelToDelete(hotel);
+    setModalData({
+      title: "Confirm Delete",
+      component: (
+        <div>
+          <p>
+            Are you sure you want to delete <b>{hotel.name}</b>?
+          </p>
+          <div className="mt-4 flex justify-end">
+            <Button variant="outline" onClick={closeModals}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="ml-2"
+              onClick={() => handleDeleteHotel(hotel._id)}
+            >
+              Confirm
+            </Button>
+          </div>
+        </div>
+      ),
+    });
+  };
+
+  // Handle hotel deletion
+  const handleDeleteHotel = async (hotelId: string) => {
+    try {
+      await deleteHotel(hotelId);
+      setHotels((prevHotels) =>
+        prevHotels.filter((hotel) => hotel._id !== hotelId)
+      );
+      closeModals();
+    } catch (error) {
+      console.error("Error deleting hotel:", error);
     }
   };
 
@@ -95,6 +155,7 @@ export default function HotelPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>SL</TableHead>
+                <TableHead>ID</TableHead>
                 <TableHead className="w-[200px]">Hotel Name</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Rating</TableHead>
@@ -106,6 +167,7 @@ export default function HotelPage() {
               {hotels.map((hotel, idx) => (
                 <TableRow key={hotel._id}>
                   <TableCell className="font-medium">{idx + 1}</TableCell>
+                  <TableCell className="font-medium">{hotel._id}</TableCell>
                   <TableCell className="font-medium">{hotel.name}</TableCell>
                   <TableCell>{hotel.address}</TableCell>
                   <TableCell>{hotel.averageRating} ⭐</TableCell>
@@ -113,10 +175,19 @@ export default function HotelPage() {
                     ${hotel.costPerNight}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditHotelModal(hotel)}
+                    >
                       Edit
                     </Button>
-                    <Button variant="destructive" size="sm" className="ml-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="ml-2"
+                      onClick={() => openDeleteModal(hotel)}
+                    >
                       Delete
                     </Button>
                   </TableCell>
@@ -126,30 +197,19 @@ export default function HotelPage() {
           </Table>
         )}
 
-        {/* Pagination Controls */}
         <div className="flex justify-between items-center mt-4">
-          <Button
-            disabled={pagination.currentPage <= 1}
-            onClick={() => handlePageChange(pagination.currentPage - 1)}
-          >
-            Previous
-          </Button>
-          <span>
-            Page {pagination.currentPage} of {pagination.totalPages}
-          </span>
-          <Button
-            disabled={pagination.currentPage >= pagination.totalPages}
-            onClick={() => handlePageChange(pagination.currentPage + 1)}
-          >
-            Next
-          </Button>
+          <PaginationComponent
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            onPageChange={(page: number) => fetchHotels(page)}
+          />
         </div>
       </div>
 
       {modalData && (
         <Modal
           isOpen={!!modalData}
-          closeModal={() => setModalData(null)}
+          closeModal={closeModals}
           title={modalData.title}
           dialogClass="w-[50%]"
         >

@@ -17,7 +17,7 @@ export const createHotel = async (hotelData: Hotel) => {
         const response = await axiosInstance.post("/hotel", hotelData);
         return response.data;
     } catch (error: any) {
-        console.error("Error creating hotel:", error);
+        console.log("Error creating hotel:", error);
         throw error.response?.data || error.message;
     }
 };
@@ -28,7 +28,7 @@ export const getHotelById = async (id: string) => {
         const response = await axiosInstance.get(`/hotel/${id}`);
         return response.data;
     } catch (error: any) {
-        console.error("Error fetching hotel:", error);
+        console.log("Error fetching hotel:", error);
         throw error.response?.data || error.message;
     }
 };
@@ -41,8 +41,8 @@ export const getAllHotels = async (page: number = 1, limit: number = 10) => {
         });
         return response.data;
     } catch (error: any) {
-        console.error("Error fetching hotels:", error);
-        throw error.response?.data || error.message;
+        console.log("Error fetching hotels:", error);
+        return error.response?.data || error.message;
     }
 };
 
@@ -52,31 +52,35 @@ export const updateHotel = async (id: string, hotelData: Partial<Hotel>) => {
         const response = await axiosInstance.put(`/hotel/${id}`, hotelData);
         return response.data;
     } catch (error: any) {
-        console.error("Error updating hotel:", error);
-        throw error.response?.data || error.message;
+        console.log("Error updating hotel:", error);
+        return error.response?.data || error.message;
     }
 };
 
 // Delete a hotel
 export const deleteHotel = async (id: string) => {
     try {
-        const response = await axiosInstance.delete(`/hotels/${id}`);
+        const response = await axiosInstance.delete(`/hotel/${id}`);
         return response.data;
     } catch (error: any) {
-        console.error("Error deleting hotel:", error);
-        throw error.response?.data || error.message;
+        console.log("Error deleting hotel:", error);
+        return error.response?.data || error.message;
     }
 };
 
-// Search hotels
 export const searchHotels = async (query: string) => {
+    if (!query.trim()) return { error: { message: "Query cannot be empty", status: 400 } };
+
     try {
-        const response = await axiosInstance.get(`/hotels/search`, {
-            params: { query },
-        });
-        return response.data;
+        const { data } = await axiosInstance.get(`/hotel/search`, { params: { query } });
+        return data;
     } catch (error: any) {
-        console.error("Error searching hotels:", error);
-        throw error.response?.data || error.message;
+        console.log("Error searching hotels:", error?.response?.data || error.message);
+        return {
+            error: {
+                message: error.response?.data?.error?.message || "Something went wrong",
+                status: error.response?.status || 500,
+            },
+        };
     }
 };

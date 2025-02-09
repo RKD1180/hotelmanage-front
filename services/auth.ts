@@ -26,6 +26,33 @@ export async function login(username: string, password: string) {
 }
 
 
+export async function signup(name: string, username: string, password: string, email: string) {
+    try {
+        const response = await axiosInstance.post("/auth/register", { name, username, password, email });
+
+        if (response.status === 201 && response.data.user) {
+
+            return { success: true, message: "Signup successful" };
+        } else {
+            return { success: false, message: "Failed to create account" };
+        }
+    } catch (error: any) {
+        console.log("Signup error:", error);
+        return error?.response?.data;
+    }
+}
+
+// Get all users with pagination
+export const getAllUsers = async () => {
+    try {
+        const response = await axiosInstance.get(`/auth/users`);
+        return response.data;
+    } catch (error: any) {
+        console.log("Error fetching hotels:", error);
+        return error.response?.data || error.message;
+    }
+};
+
 // **Logout Function: Clears Session & Cookies**
 export const logout = async () => {
     try {

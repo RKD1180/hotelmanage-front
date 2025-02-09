@@ -1,49 +1,58 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { set, z } from "zod";
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FormWrapper from "@/components/FormComponents/FormWrapper";
 import FormInput from "@/components/FormComponents/FormInput";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { createHotel } from "@/services/hotelService";
+import { createHotel, updateHotel } from "@/services/hotelService"; // Ensure updateHotel is defined
 
 const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Hotel name must be at least 2 characters.",
-  }),
-  address: z.string().min(5, {
-    message: "Address must be at least 5 characters.",
-  }),
-  costPerNight: z.number().min(1, {
-    message: "Cost per night must be greater than 0.",
-  }),
-  availableRooms: z.number().min(1, {
-    message: "Available rooms must be at least 1.",
-  }),
-  image: z.string({
-    message: "Please provide a valid image URL.",
-  }),
-  averageRating: z.number().min(0).max(5, {
-    message: "Average rating must be between 0 and 5.",
-  }),
+  name: z
+    .string()
+    .min(2, { message: "Hotel name must be at least 2 characters." }),
+  address: z
+    .string()
+    .min(5, { message: "Address must be at least 5 characters." }),
+  costPerNight: z
+    .number()
+    .min(1, { message: "Cost per night must be greater than 0." }),
+  availableRooms: z
+    .number()
+    .min(1, { message: "Available rooms must be at least 1." }),
+  image: z.string({ message: "Please provide a valid image URL." }),
+  averageRating: z
+    .number()
+    .min(0)
+    .max(5, { message: "Average rating must be between 0 and 5." }),
 });
 
 interface Props {
+  closeModals: () => void;
   fetchHotels: () => void;
+  hotel?: {
+    _id?: string;
+    name: string;
+    address: string;
+    costPerNight: number;
+    availableRooms: number;
+    image: string;
+    averageRating: number;
+  };
 }
 
-const AddHotel = ({ fetchHotels }: Props) => {
+const AddHotel = ({ fetchHotels, hotel, closeModals }: Props) => {
   const [user, setUser] = useState<{
     name: string;
     email: string;
     _id: string;
   } | null>(null);
-
+  const isEditing = !!hotel; // Determine if editing or adding a new hotel
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: hotel || {
       name: "",
       address: "",
       costPerNight: 0,
@@ -55,18 +64,25 @@ const AddHotel = ({ fetchHotels }: Props) => {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      const response: any = await createHotel({
-        ...values,
-        userId: user?._id || "",
-      });
-
-      if (response.status === 200) {
-        showSuccessToast("Hotel added successfully!");
-        fetchHotels(); 
-        // Redirect to a different page or show success message
+      let response;
+      if (isEditing && hotel?._id) {
+        response = await updateHotel(hotel._id, values);
       } else {
-        showErrorToast(response.error?.message || "Failed to add hotel");
-        console.log("Failed to add hotel:", response);
+        response = await createHotel({
+          ...values,
+          userId: user?._id || "",
+        });
+      }
+      if (response.status === 200) {
+        closeModals();
+        showSuccessToast(
+          isEditing
+            ? "Hotel updated successfully!"
+            : "Hotel added successfully!"
+        );
+        fetchHotels();
+      } else {
+        showErrorToast(response.error?.message || "Failed to process request");
       }
     } catch (error) {
       console.error("Unexpected error:", error);
@@ -104,7 +120,6 @@ const AddHotel = ({ fetchHotels }: Props) => {
               <FormInput
                 name="costPerNight"
                 label="Cost per Night"
-                placeholder="Cost per Night"
                 type="number"
               />
             </div>
@@ -112,7 +127,6 @@ const AddHotel = ({ fetchHotels }: Props) => {
               <FormInput
                 name="availableRooms"
                 label="Available Rooms"
-                placeholder="Available Rooms"
                 type="number"
               />
             </div>
@@ -127,7 +141,6 @@ const AddHotel = ({ fetchHotels }: Props) => {
               <FormInput
                 name="averageRating"
                 label="Average Rating"
-                placeholder="Average Rating (0-5)"
                 type="number"
                 step="0.1"
                 min="0"
@@ -136,7 +149,7 @@ const AddHotel = ({ fetchHotels }: Props) => {
             </div>
             <div className="col-span-12">
               <Button className="w-full bg-[#3088c3] hover:bg-[#1c5a9a] text-white">
-                Add Hotel
+                {isEditing ? "Update Hotel" : "Add Hotel"}
               </Button>
             </div>
           </div>

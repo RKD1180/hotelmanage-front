@@ -7,8 +7,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FormWrapper from "@/components/FormComponents/FormWrapper";
 import FormInput from "@/components/FormComponents/FormInput";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { signup } from "@/services/auth";
 
 const formSchema = z.object({
+  name: z.string().min(2, {
+    message: "name must be at least 2 characters.",
+  }),
   username: z.string().min(2, {
     message: "Username must be at least 2 characters.",
   }),
@@ -24,14 +29,33 @@ const Signup = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: "",
       username: "",
       email: "",
       password: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("Signup Data:", values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const response: any = await signup(
+        values.name,
+        values.username,
+        values.password,
+        values.email
+      );
+
+      if (response.success) {
+        showSuccessToast(response?.message || "Signup Successfully");
+        form.reset({});
+        console.log("Login successful:", response.message);
+      } else {
+        showErrorToast(response.error?.message || "Signup failed");
+        console.log("Signup failed:", response.error);
+      }
+    } catch (error) {
+      console.error("Unexpected error:", error);
+    }
   }
 
   return (
@@ -42,6 +66,9 @@ const Signup = () => {
         </h2>
         <FormWrapper methods={form} onSubmit={onSubmit}>
           <div className="grid grid-cols-12 gap-2 space-y-2">
+            <div className="col-span-12">
+              <FormInput name="name" label="Name" placeholder="Name" />
+            </div>
             <div className="col-span-12">
               <FormInput
                 name="username"

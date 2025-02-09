@@ -1,11 +1,17 @@
-import Login from "@/components/pages/Login/Login";
-import Image from "next/image";
-import { Suspense } from "react";
+import HotelsList from "@/components/pages/Hotels/Hotels";
+import { getAllHotels } from "@/services/hotelService";
 
-export default function Home() {
+export default async function Home() {
+  const page = 1; // Default page
+  const limit = 8; // Default limit
+
+  // Fetch hotels on the server
+  const data = await getAllHotels(page, limit);
+
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <Login />
-    </Suspense>
+    <HotelsList
+      hotels={data.hotels}
+      pagination={{ currentPage: page, totalPages: data.totalPages, limit }}
+    />
   );
 }

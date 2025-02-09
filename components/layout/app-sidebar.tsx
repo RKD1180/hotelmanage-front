@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   User,
+  Users,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Cookies from "js-cookie";
@@ -23,14 +24,12 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { showSuccessToast } from "@/lib/toast"; // Import toast for feedback
+import Link from "next/link";
 
 // Menu items
 const items = [
-  { title: "Home", url: "#", icon: Home },
-  { title: "Inbox", url: "#", icon: Inbox },
-  { title: "Calendar", url: "#", icon: Calendar },
-  { title: "Search", url: "#", icon: Search },
-  { title: "Settings", url: "#", icon: Settings },
+  { title: "Home", url: "/admin", icon: Home },
+  { title: "Users", url: "/admin/users", icon: Users },
 ];
 
 export function AppSidebar() {
@@ -68,10 +67,10 @@ export function AppSidebar() {
                 {items.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
-                      <a href={item.url} className="flex items-center gap-2">
+                      <Link href={item.url} className="flex items-center gap-2">
                         <item.icon />
                         <span>{item.title}</span>
-                      </a>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
